@@ -1,0 +1,34 @@
+{
+  "name": "node-liquidsoap",
+  "description": "nodeJS liquidsoap stream controler.",
+  "version": "0.0.1",
+  "homepage": "http://github.com/toots/node-liquidsoap",
+  "author": "Romain Beauxis <toots@rastageeks.org",
+  "repository":
+    {
+      "type":"git",
+      "url":"git://github.com/toots/node-liquidsoap.git"
+    },
+  "bugs":
+    {
+      "mail":"toots@rastageeks.org",
+      "url":"http://github.com/toots/node-liquidsoap/issues"
+    },
+  "main": "lib/liquidsoap.js",
+  "directories": 
+    { "lib":"./lib",
+      "test":"./test",   
+      "src":"./src" 
+    },
+  "engine": {"node": ">= 0.4.7", "npm": "1"},
+  "licences":
+    [
+      {
+        "type":"GPL3",
+        "url": "http://www.gnu.org/licenses/gpl-3.txt"
+      }
+    ],
+  "dependencies": {
+    "coffee-script" : "1.1.1"
+  }
+}
