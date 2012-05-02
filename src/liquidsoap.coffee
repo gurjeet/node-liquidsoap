@@ -1,5 +1,14 @@
 class Source
-  constructor: (opts) ->
+  @create: (dst, src) ->
+    opts = src.opts || src
+    res = new dst opts
+
+    for label, value of src
+      res[label] = value unless res[label]?
+
+    res
+
+  constructor: (@opts) ->
     @auth = new Buffer("#{opts.auth}").toString "base64" if opts.auth?
     @host = opts.host
     @http = require(opts.scheme || "http")
@@ -42,11 +51,18 @@ class Source
 
     req.end query
 
-class module.exports.RequestQueue extends Source
-  enable: (fn) =>
-    @http_request {
+class module.exports.Request extends Source
+
+class module.exports.Request.Queue extends module.exports.Request
+  @create: (opts, fn) =>
+    res = Source.create this, opts
+
+    res.http_request {
       method : "PUT",
-      path   :   "/request/queue/#{@name}"}, fn
+      path   :   "/request/queue/#{res.name}"}, (err) ->
+        return fn err, null if err?
+
+        fn null, res
 
   push: (requests, fn) =>
     requests = [requests] unless requests instanceof Array
@@ -56,14 +72,26 @@ class module.exports.RequestQueue extends Source
       path   : "/requests/#{@name}",
       query  : requests }, fn
 
-class module.exports.OutputAo extends Source
-  enable: (source, fn) =>
-    @http_request {
+class module.exports.Output extends Source
+
+class module.exports.Output.Ao extends module.exports.Output
+  @create: (source, fn) =>
+    res = Source.create this, source
+
+    res.http_request {
       method: "PUT",
-      path:   "/output/ao/#{source.name}"}, fn
+      path:   "/output/ao/#{source.name}"}, (err) ->
+        return fn err, null if err?
+
+        fn null, res
 
 class module.exports.Mksafe extends Source
-  enable: (source, fn) =>
-    @http_request {
+  @create: (source, fn) =>
+    res = Source.create this, source
+
+    res.http_request {
       method: "PUT",
-      path:   "/mksafe/#{source.name}"}, fn
+      path:   "/mksafe/#{source.name}"}, (err) ->
+        return fn err, null if err?
+
+        fn null, res

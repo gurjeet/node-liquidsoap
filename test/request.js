@@ -7,25 +7,19 @@ opts = {
   port: 8080 }
 
 
-request = new liquidsoap.RequestQueue(opts);
-
-request.enable(function(err) {
+liquidsoap.Request.Queue.create(opts, function(err, source) {
   if (err)
     return console.log("Error creating request source.");
   
-  mksafe  = new liquidsoap.Mksafe(opts);
-
-  mksafe.enable(request, function(err) {
+  liquidsoap.Mksafe.create(source, function(err, source) {
     if (err)
       return console.log("Error creating mksafe source.");
 
-    ao = new liquidsoap.OutputAo(opts);
-
-    ao.enable(mksafe, function(err) {
+    liquidsoap.Output.Ao.create(source, function(err, source) {
       if (err)
         console.log("Error creating ao source.");
 
-      request.push(["/tmp/foo.mp3"], function (err) {
+      source.push("/tmp/bla.mp3", function (err) {
          if (err)
            console.log("Error pushing request to request source");
 

@@ -1,5 +1,5 @@
 {
-  "name": "node-liquidsoap",
+  "name": "liquidsoap",
   "description": "nodeJS liquidsoap stream controler.",
   "version": "0.0.1",
   "homepage": "http://github.com/toots/node-liquidsoap",
