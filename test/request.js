@@ -6,8 +6,9 @@ opts = {
   host: "localhost",
   port: 8080 }
 
+client = new liquidsoap.Client(opts);
 
-liquidsoap.Request.Queue.create(opts, function(err, source) {
+liquidsoap.Request.Queue.create(client, function(err, source) {
   if (err)
     return console.log("Error creating request source.");
   

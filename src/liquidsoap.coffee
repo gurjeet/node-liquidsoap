@@ -1,13 +1,4 @@
-class Source
-  @create: (dst, src) ->
-    opts = src.opts || src
-    res = new dst opts
-
-    for label, value of src
-      res[label] = value unless res[label]?
-
-    res
-
+class module.exports.Client
   constructor: (@opts) ->
     @auth = new Buffer("#{opts.auth}").toString "base64" if opts.auth?
     @host = opts.host
@@ -51,9 +42,18 @@ class Source
 
     req.end query
 
-class module.exports.Request extends Source
+class Source
+  @create: (dst, src) ->
+    res = new dst src.opts
 
-class module.exports.Request.Queue extends module.exports.Request
+    for label, value of src
+      res[label] = value unless res[label]?
+
+    res
+
+module.exports.Request = {}
+
+class module.exports.Request.Queue extends Source
   @create: (opts, fn) =>
     res = Source.create this, opts
 
@@ -72,9 +72,9 @@ class module.exports.Request.Queue extends module.exports.Request
       path   : "/requests/#{@name}",
       query  : requests }, fn
 
-class module.exports.Output extends Source
+module.exports.Output = {}
 
-class module.exports.Output.Ao extends module.exports.Output
+class module.exports.Output.Ao extends Source
   @create: (source, fn) =>
     res = Source.create this, source
 
