@@ -90,6 +90,23 @@ class module.exports.Metadata.Get extends Source
       method : "GET",
       path   : "/metadata/#{@name}" }, fn
 
+class module.exports.Metadata.Set extends Source
+  @create: (opts, fn) =>
+    res = Source.create this, opts
+
+    res.http_request {
+      method : "PUT",
+      path   :   "/set_metadata/#{res.name}"}, (err) ->
+        return fn err, null if err?
+
+        fn null, res
+
+  set_metadata: (metadata, fn) =>
+    @http_request {
+      method : "POST",
+      path   : "/metadata/#{@name}",
+      query  : metadata }, fn
+
 module.exports.Output = {}
 
 class module.exports.Output.Ao extends Source
