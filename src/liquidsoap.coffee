@@ -72,6 +72,24 @@ class module.exports.Request.Queue extends Source
       path   : "/requests/#{@name}",
       query  : requests }, fn
 
+module.exports.Metadata = {}
+
+class module.exports.Metadata.Get extends Source
+  @create: (opts, fn) =>
+    res = Source.create this, opts
+
+    res.http_request {
+      method : "PUT",
+      path   :   "/get_metadata/#{res.name}"}, (err) ->
+        return fn err, null if err?
+
+        fn null, res
+
+  get_metadata: (fn) =>
+    @http_request {
+      method : "GET",
+      path   : "/metadata/#{@name}" }, fn
+
 module.exports.Output = {}
 
 class module.exports.Output.Ao extends Source

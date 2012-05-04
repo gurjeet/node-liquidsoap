@@ -11,20 +11,36 @@ client = new liquidsoap.Client(opts);
 liquidsoap.Request.Queue.create(client, function(err, source) {
   if (err)
     return console.log("Error creating request source.");
-  
-  liquidsoap.Mksafe.create(source, function(err, source) {
+
+  liquidsoap.Metadata.Get.create(source, function (err, source) {
     if (err)
-      return console.log("Error creating mksafe source.");
+      return console.log("Error creating enabling get metadata callback.");
 
-    liquidsoap.Output.Ao.create(source, function(err, source) {
+    liquidsoap.Mksafe.create(source, function(err, source) {
       if (err)
-        console.log("Error creating ao source.");
+        return console.log("Error creating mksafe source.");
 
-      source.push("/tmp/bla.mp3", function (err) {
-         if (err)
-           console.log("Error pushing request to request source");
+      liquidsoap.Output.Ao.create(source, function(err, source) {
+        if (err)
+          return console.log("Error creating ao source.");
 
-         return console.log("All good folks!");
+        source.push("/tmp/bla.mp3", function (err) {
+          if (err)
+            return console.log("Error pushing request to request source");
+
+          var get_meta = function () {
+            source.get_metadata(function (err, res) {
+              if (err)
+                return console.log("Error grabbing metadata");
+
+              console.log("Latest metadata: \n" + JSON.stringify(res, undefined, 2));
+
+              return console.log("All good folks!");
+            });
+          };
+
+          setTimeout(get_meta, 1000.);  
+        });
       });
     });
   });
