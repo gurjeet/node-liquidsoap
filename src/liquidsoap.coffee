@@ -59,6 +59,10 @@ class module.exports.Client
     exec = (params, name, fn) =>
       return fn null unless params?
 
+      unless params.type?
+        res[name] = params
+        return fn null
+
       chain params.sources, exec, (err) =>
         return fn err if err?
 
@@ -102,7 +106,7 @@ class module.exports.Blank extends Source
 
     res.http_request {
       method : "PUT",
-      path   : "/blank/#{name}",
+      path   : "/blank/#{res.name}",
       query  : opts.duration || 0 }, (err) ->
         return fn err, null if err?
 
@@ -145,7 +149,7 @@ class module.exports.Metadata.Get extends Source
 
     res.http_request {
       method : "PUT",
-      path   :   "/get_metadata/#{name}"}, (err) ->
+      path   :   "/get_metadata/#{source.name}"}, (err) ->
         return fn err, null if err?
 
         fn null, res
@@ -165,7 +169,7 @@ class module.exports.Metadata.Set extends Source
 
     res.http_request {
       method : "PUT",
-      path   :   "/set_metadata/#{name}"}, (err) ->
+      path   :   "/set_metadata/#{source.name}"}, (err) ->
         return fn err, null if err?
 
         fn null, res
@@ -188,7 +192,7 @@ class module.exports.Output.Ao extends Source
 
     res.http_request {
       method: "PUT",
-      path:   "/output/ao/#{name}"}, (err) ->
+      path:   "/output/ao/#{source.name}"}, (err) ->
         return fn err, null if err?
 
         fn null, res
@@ -203,7 +207,7 @@ class module.exports.Output.Dummy extends Source
 
     res.http_request {
       method: "PUT",
-      path:   "/output/dummy/#{name}"}, (err) ->
+      path:   "/output/dummy/#{source.name}"}, (err) ->
         return fn err, null if err?
 
         fn null, res

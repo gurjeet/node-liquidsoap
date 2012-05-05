@@ -9,23 +9,24 @@ opts =
 client = new Client opts
 
 sources =
-  ao :
+  foo :
     type   : Output.Ao
     source :
       type   : Metadata.Get
       source :
-        type : Metadata.Set
+        type   : Metadata.Set
         source :
           type    : Fallback
           sources :
             request1 :
               type : Request.Queue
+            blank    :
+              type     : Blank
+              duration : 3
             request2 :
               type : Request.Queue
-  dummy :
-    type   : Output.Dummy
-    source :
-      type : Blank
+  bar :
+    type : Blank
 
 pushRequest = (source, request, fn) ->
  source.push request, (err) ->
@@ -62,11 +63,22 @@ changeMetadata = (source, value, fn) ->
   setTimeout cb, 1000
 
 client.create sources, (err, sources) ->
+  # Test case where source is already instanciated
+  dummy =
+    dummy :
+      type   : Output.Dummy
+      source : sources.bar
+
+  client.create dummy, (err) ->
+    if err?
+      console.log "Error while creating dummy source."
+      return console.dir err
+
   if err?
     console.log "Error while creating sources:"
     return console.dir err
 
   pushRequest sources.request1, "/tmp/foo.mp3", ->
     pushRequest sources.request2, "/tmp/bla.mp3", ->
-      changeMetadata sources.ao, "foo", ->
+      changeMetadata sources.foo, "foo", ->
         console.log "All Good Folks!"
