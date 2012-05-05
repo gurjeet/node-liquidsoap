@@ -29,6 +29,6 @@
       }
     ],
   "dependencies": {
-    "coffee-script" : "1.1.1"
+    "coffee-script" : "1.3.1"
   }
 }

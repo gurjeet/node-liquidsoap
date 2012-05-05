@@ -51,6 +51,22 @@ class Source
 
     res
 
+class module.exports.Blank extends Source
+  @create: (source, duration, fn) =>
+    unless fn?
+      fn       = duration
+      duration = 0
+
+    res = Source.create this, source
+
+    res.http_request {
+      method : "PUT",
+      path   : "/blank/#{source.name}",
+      query  : duration }, (err) ->
+        return fn err, null if err?
+
+        fn null, res
+
 module.exports.Request = {}
 
 class module.exports.Request.Queue extends Source
@@ -127,6 +143,25 @@ class module.exports.Mksafe extends Source
     res.http_request {
       method: "PUT",
       path:   "/mksafe/#{source.name}"}, (err) ->
+        return fn err, null if err?
+
+        fn null, res
+
+class module.exports.Fallback extends Source
+  @create: (client, sources, opts, fn) =>
+    unless fn?
+      fn   = opts
+      opts = []
+
+    res     = Source.create this, client
+    sources = (source.name for source in sources)
+
+    res.http_request {
+      method : "PUT",
+      path   : "/fallback/#{client.name}",
+      query  : 
+        sources : sources
+        options : opts }, (err) ->
         return fn err, null if err?
 
         fn null, res
