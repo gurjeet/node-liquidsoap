@@ -84,9 +84,9 @@ client.create sources, (err, sources) ->
             console.log "Error while skipping on request1:"
             return console.dir err
 
-            sources.bar.shutdown (err) ->
-              if err?
-                console.log "Error while shutting bar (dummy) source down:"
-                return console.dir err
+          sources.bar.shutdown (err) ->
+            if err?
+              console.log "Error while shutting bar (dummy) source down:"
+              return console.dir err
 
-              console.log "All Good Folks!"
+            console.log "All Good Folks!"
