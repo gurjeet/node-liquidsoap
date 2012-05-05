@@ -1,10 +1,11 @@
+{chain} = require "./utils"
+
 class module.exports.Client
   constructor: (@opts) ->
     @auth = new Buffer("#{opts.auth}").toString "base64" if opts.auth?
     @host = opts.host
     @http = require(opts.scheme || "http")
     @port = opts.port || 80
-    @name = opts.name
 
   http_request: (opts, fn) =>
     expects = opts.expects || 200
@@ -29,8 +30,6 @@ class module.exports.Client
       opts.headers["Content-Length"] = query.length
 
     req = @http.request opts, (res) ->
-      return fn res, null unless res.statusCode == expects
-
       data = ""
       res.on "data", (buf) -> data += buf
       res.on "end", ->
@@ -38,13 +37,55 @@ class module.exports.Client
           data = JSON.parse data
         catch err
 
+        if res.statusCode != expects
+          err =
+            code    : res.statusCode
+            data    : data
+            options : opts
+
+          return fn err, null
+
         fn null, data
 
     req.end query
 
+  create: (sources, fn) ->
+    res = {}
+
+    # Exec params, name create source name
+    # with given param, ppossibly recursing
+    # down to params.source and params.sources
+    # if they exist.
+    exec = (params, name, fn) =>
+      return fn null unless params?
+
+      chain params.sources, exec, (err) =>
+        return fn err if err?
+
+        exec params.source, name, (err) =>
+          return fn err if err?
+       
+          # If source does not exist yet (source creation,
+          # e.g request.queue etc..), then use current client.
+          source  = res[name] || this
+
+          params.type.create name, source, params, (err, source) =>
+            return fn err if err?
+
+            res[name] = source
+            fn null
+
+    # Create all top-level sources
+    chain sources, exec, (err) ->
+      return fn err, null if err?
+
+      fn null, res
+
 class Source
-  @create: (dst, src) ->
-    res = new dst src.opts
+  @create: (name, dst, src) ->
+    res = new dst
+
+    res.name = name
 
     for label, value of src
       res[label] = value unless res[label]?
@@ -52,17 +93,17 @@ class Source
     res
 
 class module.exports.Blank extends Source
-  @create: (source, duration, fn) =>
+  @create: (name, source, opts, fn) =>
     unless fn?
-      fn       = duration
-      duration = 0
+      fn       = opts
+      opts     = {}
 
-    res = Source.create this, source
+    res = Source.create name, this, source
 
     res.http_request {
       method : "PUT",
-      path   : "/blank/#{source.name}",
-      query  : duration }, (err) ->
+      path   : "/blank/#{name}",
+      query  : opts.duration || 0 }, (err) ->
         return fn err, null if err?
 
         fn null, res
@@ -70,8 +111,12 @@ class module.exports.Blank extends Source
 module.exports.Request = {}
 
 class module.exports.Request.Queue extends Source
-  @create: (opts, fn) =>
-    res = Source.create this, opts
+  @create: (name, client, opts, fn) =>
+    unless fn?
+      fn   = opts
+      opts = {}
+
+    res = Source.create name, this, client
 
     res.http_request {
       method : "PUT",
@@ -91,12 +136,16 @@ class module.exports.Request.Queue extends Source
 module.exports.Metadata = {}
 
 class module.exports.Metadata.Get extends Source
-  @create: (opts, fn) =>
-    res = Source.create this, opts
+  @create: (name, source, opts, fn) =>
+    unless fn?
+      fn   = opts
+      opts = {}
+
+    res = Source.create name, this, source
 
     res.http_request {
       method : "PUT",
-      path   :   "/get_metadata/#{res.name}"}, (err) ->
+      path   :   "/get_metadata/#{name}"}, (err) ->
         return fn err, null if err?
 
         fn null, res
@@ -107,12 +156,16 @@ class module.exports.Metadata.Get extends Source
       path   : "/metadata/#{@name}" }, fn
 
 class module.exports.Metadata.Set extends Source
-  @create: (opts, fn) =>
-    res = Source.create this, opts
+  @create: (name, source, opts, fn) =>
+    unless fn?
+      fn   = opts
+      opts = {}
+
+    res = Source.create name, this, source
 
     res.http_request {
       method : "PUT",
-      path   :   "/set_metadata/#{res.name}"}, (err) ->
+      path   :   "/set_metadata/#{name}"}, (err) ->
         return fn err, null if err?
 
         fn null, res
@@ -126,42 +179,52 @@ class module.exports.Metadata.Set extends Source
 module.exports.Output = {}
 
 class module.exports.Output.Ao extends Source
-  @create: (source, fn) =>
-    res = Source.create this, source
+  @create: (name, source, opts, fn) =>
+    unless fn?
+      fn   = opts
+      opts = {}
+
+    res = Source.create name, this, source
 
     res.http_request {
       method: "PUT",
-      path:   "/output/ao/#{source.name}"}, (err) ->
+      path:   "/output/ao/#{name}"}, (err) ->
         return fn err, null if err?
 
         fn null, res
 
-class module.exports.Mksafe extends Source
-  @create: (source, fn) =>
-    res = Source.create this, source
+class module.exports.Output.Dummy extends Source
+  @create: (name, source, opts, fn) =>
+    unless fn?
+      fn   = opts
+      opts = {}
+
+    res = Source.create name, this, source
 
     res.http_request {
       method: "PUT",
-      path:   "/mksafe/#{source.name}"}, (err) ->
+      path:   "/output/dummy/#{name}"}, (err) ->
         return fn err, null if err?
 
         fn null, res
 
 class module.exports.Fallback extends Source
-  @create: (client, sources, opts, fn) =>
+  @create: (name, client, opts, fn) =>
     unless fn?
       fn   = opts
-      opts = []
+      opts = {}
 
-    res     = Source.create this, client
-    sources = (source.name for source in sources)
+    res     = Source.create name, this, client
+    sources = (key for key, source of opts.sources)
+
+    options = opts.options || []
 
     res.http_request {
       method : "PUT",
-      path   : "/fallback/#{client.name}",
+      path   : "/fallback/#{name}",
       query  : 
         sources : sources
-        options : opts }, (err) ->
+        options : options }, (err) ->
         return fn err, null if err?
 
         fn null, res
