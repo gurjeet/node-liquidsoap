@@ -96,6 +96,17 @@ class Source
 
     res
 
+  # Generic endpoints
+  skip: (fn) ->
+    @http_request {
+      method : "POST",
+      path   : "/sources/skip/#{@name}"}, fn
+
+  shutdown: (fn) ->
+    @http_request {
+      method : "DELETE",
+      path   : "/sources/#{@name}"}, fn
+
 class module.exports.Blank extends Source
   @create: (name, source, opts, fn) =>
     unless fn?

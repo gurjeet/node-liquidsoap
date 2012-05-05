@@ -20,13 +20,11 @@ sources =
           sources :
             request1 :
               type : Request.Queue
-            blank    :
-              type     : Blank
-              duration : 3
             request2 :
               type : Request.Queue
   bar :
-    type : Blank
+    type     : Blank
+    duration : 3
 
 pushRequest = (source, request, fn) ->
  source.push request, (err) ->
@@ -81,4 +79,14 @@ client.create sources, (err, sources) ->
   pushRequest sources.request1, "/tmp/foo.mp3", ->
     pushRequest sources.request2, "/tmp/bla.mp3", ->
       changeMetadata sources.foo, "foo", ->
-        console.log "All Good Folks!"
+        sources.request1.skip (err) ->
+          if err?
+            console.log "Error while skipping on request1:"
+            return console.dir err
+
+            sources.bar.shutdown (err) ->
+              if err?
+                console.log "Error while shutting bar (dummy) source down:"
+                return console.dir err
+
+              console.log "All Good Folks!"
