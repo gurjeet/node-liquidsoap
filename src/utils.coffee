@@ -16,3 +16,14 @@ module.exports.chain = (object, process, fn) ->
 
   exec()
 
+module.exports.stringify = (object) ->
+  res = {}
+
+  for key, value of object
+    res[key] = "#{value}"
+
+  res
+
+module.exports.mixin = (src, dst) ->
+  for label, value of src
+    dst[label] = value unless dst[label]?

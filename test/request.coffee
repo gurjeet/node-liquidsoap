@@ -1,5 +1,7 @@
-{Client, Request, Output,
- Metadata, Fallback, Blank } = require "../src/liquidsoap"
+{ Client,   Request,
+  Output,   Input,
+  Metadata, Fallback,
+  Single,   Blank } = require "../src/liquidsoap"
 
 opts =
   auth: "test:test"
@@ -22,9 +24,16 @@ sources =
               type : Request.Queue
             request2 :
               type : Request.Queue
+            radiopi  :
+              type      : Input.Http
+              uri       : "http://radiopi.org:8080/reggae"
+              autostart : false
   bar :
     type     : Blank
     duration : 3
+  bla :
+    type : Single
+    uri  : "say:it works!"
 
 pushRequest = (source, request, fn) ->
  source.push request, (err) ->
@@ -60,7 +69,27 @@ changeMetadata = (source, value, fn) ->
 
   setTimeout cb, 1000
 
+checkState = (source, fn) ->
+  source.status (err, res) ->
+    return fn err if err?
+
+    console.log "Current status for #{source.name}:"
+    console.dir res
+
+    source.start (err) ->
+      return fn err if err?
+
+      source.status (err, res) ->
+        console.log "New status for #{source.name}:"
+        console.dir res
+
+        fn null
+
 client.create sources, (err, sources) ->
+  if err?
+    console.log "Error while creating sources:"
+    return console.dir err
+
   # Test case where source is already instanciated
   dummy =
     dummy :
@@ -89,4 +118,14 @@ client.create sources, (err, sources) ->
               console.log "Error while shutting bar (dummy) source down:"
               return console.dir err
 
-            console.log "All Good Folks!"
+            checkState sources.radiopi, (err) ->
+              if err?
+                console.log "Error while checking radiopi's status:"
+                console.dir err
+
+              sources.foo.skip (err) ->
+                if err?
+                  console.log "Error while skipping on fallback:"
+                  return console.dir err
+
+                console.log "All Good Folks!"

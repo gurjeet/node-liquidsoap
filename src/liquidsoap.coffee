@@ -1,4 +1,4 @@
-{chain} = require "./utils"
+{chain, stringify, mixin} = require "./utils"
 
 class module.exports.Client
   constructor: (@opts) ->
@@ -88,19 +88,15 @@ class module.exports.Client
 class Source
   @create: (name, dst, src) ->
     res = new dst
-
     res.name = name
-
-    for label, value of src
-      res[label] = value unless res[label]?
-
+    mixin src, res
     res
 
   # Generic endpoints
   skip: (fn) ->
     @http_request {
       method : "POST",
-      path   : "/sources/skip/#{@name}"}, fn
+      path   : "/sources/#{@name}/skip"}, fn
 
   shutdown: (fn) ->
     @http_request {
@@ -119,6 +115,42 @@ class module.exports.Blank extends Source
       method : "PUT",
       path   : "/blank/#{res.name}",
       query  : opts.duration || 0 }, (err) ->
+        return fn err, null if err?
+
+        fn null, res
+
+class module.exports.Single extends Source
+  @create: (name, source, opts, fn) =>
+    unless fn?
+      fn       = opts
+      opts     = {}
+
+    res = Source.create name, this, source
+
+    res.http_request {
+      method : "PUT",
+      path   : "/single/#{res.name}",
+      query  : opts.uri || 0 }, (err) ->
+        return fn err, null if err?
+
+        fn null, res
+
+module.exports.Input = {}
+
+class module.exports.Input.Http extends Source
+  @create: (name, source, opts, fn) =>
+    unless fn?
+      fn       = opts
+      opts     = {}
+  
+    res = Source.create name, this, source
+     
+    mixin Stateful, res
+
+    res.http_request {
+      method : "PUT",
+      path   : "/input/http/#{res.name}",
+      query  : stringify(opts) }, (err) ->
         return fn err, null if err?
 
         fn null, res
@@ -145,7 +177,7 @@ class module.exports.Request.Queue extends Source
 
     @http_request {
       method : "POST",
-      path   : "/requests/#{@name}",
+      path   : "/sources/#{@name}/requests",
       query  : requests }, fn
 
 module.exports.Metadata = {}
@@ -168,7 +200,7 @@ class module.exports.Metadata.Get extends Source
   get_metadata: (fn) =>
     @http_request {
       method : "GET",
-      path   : "/metadata/#{@name}" }, fn
+      path   : "/sources/#{@name}/metadata" }, fn
 
 class module.exports.Metadata.Set extends Source
   @create: (name, source, opts, fn) =>
@@ -188,8 +220,24 @@ class module.exports.Metadata.Set extends Source
   set_metadata: (metadata, fn) =>
     @http_request {
       method : "POST",
-      path   : "/metadata/#{@name}",
+      path   : "/sources/#{@name}/metadata",
       query  : metadata }, fn
+
+class Stateful
+  @start: (fn) ->
+    @http_request {
+      method : "POST",
+      path   : "/sources/#{@name}/start" }, fn
+
+  @stop: (fn) ->
+    @http_request {
+      method : "POST",
+      path   : "/sources/#{@name}/stop" }, fn
+
+  @status: (fn) ->
+    @http_request {
+      method : "GET",
+      path   : "/sources/#{@name}/status" }, fn
 
 module.exports.Output = {}
 
@@ -200,6 +248,8 @@ class module.exports.Output.Ao extends Source
       opts = {}
 
     res = Source.create name, this, source
+
+    mixin Stateful, res
 
     res.http_request {
       method: "PUT",
@@ -215,6 +265,8 @@ class module.exports.Output.Dummy extends Source
       opts = {}
 
     res = Source.create name, this, source
+
+    mixin Stateful, res
 
     res.http_request {
       method: "PUT",
