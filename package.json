@@ -29,6 +29,8 @@
       }
     ],
   "dependencies": {
+    "base64-js"     : "0.0.2",
+    "browserify"    : "1.10.12",
     "coffee-script" : "1.3.1"
   }
 }

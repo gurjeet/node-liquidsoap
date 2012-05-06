@@ -1,7 +1,7 @@
 { Client,   Request,
   Output,   Input,
   Metadata, Fallback,
-  Single,   Blank } = require "../src/liquidsoap"
+  Single,   Blank } = require "./liquidsoap"
 
 opts =
   auth: "test:test"

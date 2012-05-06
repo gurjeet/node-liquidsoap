@@ -1,3 +1,4 @@
+{fromByteArray} = require "base64-js"
 
 module.exports.chain = (object, process, fn) ->
   return fn null unless object?
@@ -27,3 +28,7 @@ module.exports.stringify = (object) ->
 module.exports.mixin = (src, dst) ->
   for label, value of src
     dst[label] = value unless dst[label]?
+
+# For the browser..
+module.exports.b64 = (str) ->
+  fromByteArray Array.prototype.map.call(str, (char) -> char.charCodeAt(0))

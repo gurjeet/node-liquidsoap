@@ -1,0 +1,1 @@
+window.liquidsoap = require "./liquidsoap"

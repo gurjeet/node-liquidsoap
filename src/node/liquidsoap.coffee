@@ -1,10 +1,14 @@
-{chain, stringify, mixin} = require "./utils"
+{b64, chain, stringify, mixin} = require "./utils"
 
 class module.exports.Client
   constructor: (@opts) ->
-    @auth = new Buffer("#{opts.auth}").toString "base64" if opts.auth?
+    @auth = opts.auth
     @host = opts.host
-    @http = require(opts.scheme || "http")
+    # For browserify..
+    if opts.scheme == "http"
+      @http = require "http"
+    else
+      @http = require "https"
     @port = opts.port || 80
 
   http_request: (opts, fn) =>
@@ -14,14 +18,15 @@ class module.exports.Client
     headers =
       "Accept" : "application/json"
 
-    headers["Authorization"] = "Basic #{@auth}" if @auth?
+    if @auth?
+      headers["Authorization"] = "Basic #{b64 @auth}"
 
     opts =
-      hostname : @host
-      port     : @port
-      method   : opts.method
-      path     : opts.path
-      headers  : headers
+      host    : @host
+      port    : @port
+      method  : opts.method
+      path    : opts.path
+      headers : headers
 
     if query?
       query = JSON.stringify query
