@@ -8,7 +8,7 @@ module.exports.chain = (object, process, fn) ->
   exec = ->
     return fn null unless keys.length > 0
 
-    key = keys.pop()
+    key = keys.shift()
 
     process object[key], key, (err) ->
       return fn err if err?
