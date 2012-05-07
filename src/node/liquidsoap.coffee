@@ -5,10 +5,10 @@ class module.exports.Client
     @auth = opts.auth
     @host = opts.host
     # For browserify..
-    if opts.scheme == "http"
-      @http = require "http"
-    else
+    if opts.scheme == "https"
       @http = require "https"
+    else
+      @http = require "http"
     @port = opts.port || 80
 
   http_request: (opts, fn) =>
