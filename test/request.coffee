@@ -19,6 +19,7 @@ sources =
         type   : Metadata.Set
         source :
           type    : Fallback
+          name    : "fallback"
           sources :
             request1 :
               type : Request.Queue
@@ -123,9 +124,12 @@ client.create sources, (err, sources) ->
                 console.log "Error while checking radiopi's status:"
                 console.dir err
 
-              sources.foo.skip (err) ->
-                if err?
-                  console.log "Error while skipping on fallback:"
-                  return console.dir err
+              cb = ->
+                sources.fallback.skip (err) ->
+                  if err?
+                    console.log "Error while skipping on fallback:"
+                    return console.dir err
 
-                console.log "All Good Folks!"
+                  console.log "All Good Folks!"
+             
+              setTimeout cb, 1000

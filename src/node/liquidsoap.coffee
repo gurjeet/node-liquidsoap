@@ -44,9 +44,10 @@ class module.exports.Client
 
         if res.statusCode != expects
           err =
-            code    : res.statusCode
-            data    : data
-            options : opts
+            code     : res.statusCode
+            options  : opts
+            query    : query
+            response : data
 
           return fn err, null
 
@@ -64,6 +65,8 @@ class module.exports.Client
     exec = (params, name, fn) =>
       return fn null unless params?
 
+      # If no type is given, argument
+      # is supposed to be already instanciated.
       unless params.type?
         res[name] = params
         return fn null
@@ -73,24 +76,31 @@ class module.exports.Client
 
         exec params.source, name, (err) =>
           return fn err if err?
-       
+     
+          if params.name?
+            name = params.name
+          else
+            params.name = name
+
+          # If params.source.name is defined,
+          # pick this up for the source. Otherwise
+          # use default name.
+          if params.source?.name?
+            source  = res[params.source.name]
+          else
+            source  = res[name]
+
           # If source does not exist yet (source creation,
           # e.g request.queue etc..), then use current client.
-          source  = res[name] || this
+          source = source || this
 
           callback = (err, source) ->
             return fn err if err?
 
             res[name] = source
-            fn null
+            fn null, name
 
-          # If there is a source argument, name argument is not passed
-          # as it is assumed to be a wrapping operator so name should be
-          # the same as child source.
-          if params.source?
-            params.type.create source, params, callback
-          else
-            params.type.create name, source, params, callback
+          params.type.create source, params, callback
 
     # Create all top-level sources
     chain sources, exec, (err) ->
@@ -99,17 +109,26 @@ class module.exports.Client
       fn null, res
 
 class Source
-  @create: (name, dst, src) ->
-    # If name argument is not passed, 
-    # swap values..
-    unless src?
-      src  = dst
-      dst  = name
-      name = src.name
-
+  @create: (dst, src, opts) ->
     res = new dst
-    res.name = name
+
+    res.name = opts.name ||= src.name
     mixin src, res
+ 
+    # Cleanup options
+    delete opts.type
+
+    # opts.source.
+    # First, try opts.source.name if it exists
+    if opts.source?.name?
+      opts.source = opts.source.name
+    # Then try src.name if it exists
+    else if src.name?
+      opts.source = src.name
+    # Or else, delete it..
+    else
+      delete opts.source
+
     res
 
   # Generic endpoints
@@ -126,33 +145,27 @@ class Source
 # Creation operators, name in `create` params.
 
 class module.exports.Blank extends Source
-  @create: (name, source, opts, fn) =>
-    unless fn?
-      fn       = opts
-      opts     = {}
-
-    res = Source.create name, this, source
+  @create: (client, opts, fn) =>
+    res = Source.create this, client, opts
 
     res.http_request {
-      method : "PUT",
-      path   : "/blank/#{res.name}",
-      query  : opts.duration || 0 }, (err) ->
+      method  : "PUT",
+      path    : "/blank",
+      query   : stringify(opts),
+      expects : 201 }, (err) ->
         return fn err, null if err?
 
         fn null, res
 
 class module.exports.Single extends Source
-  @create: (name, source, opts, fn) =>
-    unless fn?
-      fn       = opts
-      opts     = {}
-
-    res = Source.create name, this, source
+  @create: (client, opts, fn) =>
+    res = Source.create this, client, opts
 
     res.http_request {
-      method : "PUT",
-      path   : "/single/#{res.name}",
-      query  : opts.uri || 0 }, (err) ->
+      method  : "PUT",
+      path    : "/single",
+      query   : stringify(opts),
+      expects : 201 }, (err) ->
         return fn err, null if err?
 
         fn null, res
@@ -160,19 +173,16 @@ class module.exports.Single extends Source
 module.exports.Input = {}
 
 class module.exports.Input.Http extends Source
-  @create: (name, source, opts, fn) =>
-    unless fn?
-      fn       = opts
-      opts     = {}
-  
-    res = Source.create name, this, source
+  @create: (client, opts, fn) =>
+    res = Source.create this, client, opts
      
     mixin Stateful, res
 
     res.http_request {
-      method : "PUT",
-      path   : "/input/http/#{res.name}",
-      query  : stringify(opts) }, (err) ->
+      method  : "PUT",
+      path    : "/input/http",
+      query   : stringify(opts),
+      expects : 201 }, (err) ->
         return fn err, null if err?
 
         fn null, res
@@ -180,16 +190,14 @@ class module.exports.Input.Http extends Source
 module.exports.Request = {}
 
 class module.exports.Request.Queue extends Source
-  @create: (name, client, opts, fn) =>
-    unless fn?
-      fn   = opts
-      opts = {}
-
-    res = Source.create name, this, client
+  @create: (client, opts, fn) =>
+    res = Source.create this, client, opts
 
     res.http_request {
-      method : "PUT",
-      path   :   "/request/queue/#{res.name}"}, (err) ->
+      method  : "PUT",
+      path    : "/request/queue",
+      query   : stringify(opts),
+      expects : 201}, (err) ->
         return fn err, null if err?
 
         fn null, res
@@ -205,22 +213,22 @@ class module.exports.Request.Queue extends Source
 # Fallback operator. Name in `create` params..
 
 class module.exports.Fallback extends Source
-  @create: (name, client, opts, fn) =>
-    unless fn?
-      fn   = opts
-      opts = {}
+  @create: (client, opts, fn) =>
+    res     = Source.create this, client, opts
+    sources = {}
+    for key, source of opts.sources
+      sources[key] = ""
 
-    res     = Source.create name, this, client
-    sources = (key for key, source of opts.sources)
-
-    options = opts.options || []
+    options      = opts.options || {}
+    options.name = opts.name
 
     res.http_request {
-      method : "PUT",
-      path   : "/fallback/#{name}",
-      query  :
+      method  : "PUT",
+      path    : "/fallback",
+      query   :
         sources : sources
-        options : options }, (err) ->
+        options : options
+      expects : 201 }, (err) ->
         return fn err, null if err?
 
         fn null, res
@@ -231,15 +239,13 @@ module.exports.Metadata = {}
 
 class module.exports.Metadata.Get extends Source
   @create: (source, opts, fn) =>
-    unless fn?
-      fn   = opts
-      opts = {}
-
-    res = Source.create this, source
+    res = Source.create this, source, opts
 
     res.http_request {
-      method : "PUT",
-      path   :   "/get_metadata/#{source.name}"}, (err) ->
+      method  : "PUT",
+      path    : "/get_metadata",
+      query   : stringify(opts),
+      expects : 201 }, (err) ->
         return fn err, null if err?
 
         fn null, res
@@ -251,15 +257,13 @@ class module.exports.Metadata.Get extends Source
 
 class module.exports.Metadata.Set extends Source
   @create: (source, opts, fn) =>
-    unless fn?
-      fn   = opts
-      opts = {}
-
-    res = Source.create this, source
+    res = Source.create this, source, opts
 
     res.http_request {
-      method : "PUT",
-      path   :   "/set_metadata/#{source.name}"}, (err) ->
+      method  : "PUT",
+      path    : "/set_metadata",
+      query   : stringify(opts),
+      expects : 201 }, (err) ->
         return fn err, null if err?
 
         fn null, res
@@ -293,34 +297,30 @@ module.exports.Output = {}
 
 class module.exports.Output.Ao extends Source
   @create: (source, opts, fn) =>
-    unless fn?
-      fn   = opts
-      opts = {}
-
-    res = Source.create this, source
+    res = Source.create this, source, opts
 
     mixin Stateful, res
 
     res.http_request {
-      method: "PUT",
-      path:   "/output/ao/#{source.name}"}, (err) ->
+      method  : "PUT",
+      path    : "/output/ao",
+      query   : stringify(opts),
+      expects : 201 }, (err) ->
         return fn err, null if err?
 
         fn null, res
 
 class module.exports.Output.Dummy extends Source
   @create: (source, opts, fn) =>
-    unless fn?
-      fn   = opts
-      opts = {}
-
-    res = Source.create this, source
+    res = Source.create this, source, opts
 
     mixin Stateful, res
 
     res.http_request {
-      method: "PUT",
-      path:   "/output/dummy/#{source.name}"}, (err) ->
+      method  : "PUT",
+      path    : "/output/dummy",
+      query   : stringify(opts),
+      expects : 201 }, (err) ->
         return fn err, null if err?
 
         fn null, res
