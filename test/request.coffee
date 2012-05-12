@@ -2,6 +2,7 @@
   Output,   Input,
   Metadata, Fallback,
   Single,   Blank } = require "./liquidsoap"
+{chain}             = require "./utils"
 
 opts =
   auth: "test:test"
@@ -29,12 +30,17 @@ sources =
               type      : Input.Http
               uri       : "http://radiopi.org:8080/reggae"
               autostart : false
-  bar :
-    type     : Blank
-    duration : 3
-  bla :
-    type : Single
-    uri  : "say:it works!"
+  dummy :
+    type   : Output.Dummy
+    source :
+      type    : Fallback
+      sources :
+        bar :
+          type     : Blank
+          duration : 3
+        bla :
+          type : Single
+          uri  : "say:it works!"
 
 pushRequest = (source, request, fn) ->
  source.push request, (err) ->
@@ -92,15 +98,17 @@ client.create sources, (err, sources) ->
     return console.dir err
 
   # Test case where source is already instanciated
-  dummy =
-    dummy :
+  dummy2 =
+    dummy2 :
       type   : Output.Dummy
       source : sources.bar
 
-  client.create dummy, (err) ->
+  client.create dummy2, (err, dummy2) ->
     if err?
       console.log "Error while creating dummy source."
       return console.dir err
+
+    sources.dummy2 = dummy2.dummy2
 
   if err?
     console.log "Error while creating sources:"
@@ -114,22 +122,31 @@ client.create sources, (err, sources) ->
             console.log "Error while skipping on request1:"
             return console.dir err
 
-          sources.bar.shutdown (err) ->
+          checkState sources.radiopi, (err) ->
             if err?
-              console.log "Error while shutting bar (dummy) source down:"
-              return console.dir err
+              console.log "Error while checking radiopi's status:"
+              console.dir err
 
-            checkState sources.radiopi, (err) ->
-              if err?
-                console.log "Error while checking radiopi's status:"
-                console.dir err
+            cb = ->
+              sources.fallback.skip (err) ->
+                if err?
+                  console.log "Error while skipping on fallback:"
+                  return console.dir err
 
-              cb = ->
-                sources.fallback.skip (err) ->
+                process = (source, name, fn) ->
+                  source.shutdown (err) ->
+                    if err
+                      return fn
+                        name : name
+                        err  : err
+
+                    fn()
+
+                chain sources, process, (err) ->
                   if err?
-                    console.log "Error while skipping on fallback:"
-                    return console.dir err
+                    console.log "Error while shuting down #{err.name}:"
+                    return console.dir err.err
 
                   console.log "All Good Folks!"
              
-              setTimeout cb, 1000
+            setTimeout cb, 1000
