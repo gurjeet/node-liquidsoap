@@ -114,6 +114,23 @@ class Source
   @create: (client, opts, fn) ->
     res = new this client, opts
 
+    # Cleanup options
+    delete opts.type
+
+    # Source/sources
+   
+    # Do nothing if opts.sources is defined.
+    unless opts.sources?
+      # First, try opts.source.name if it exists
+      if opts.source?.name?
+        opts.source = opts.source.name
+      # Then try client.name if it exists
+      else if client.name?
+        opts.source = client.name
+      # Or else, delete it..
+      else
+        delete opts.source
+
     res.http_request {
       method  : "PUT",
       path    : @path,
@@ -124,22 +141,12 @@ class Source
         fn null, res
 
   constructor: (src, opts) ->
-    this.name = opts.name ||= src.name
-    mixin src, this
-
-    # Cleanup options
-    delete opts.type
-
-    # opts.source.
-    # First, try opts.source.name if it exists
-    if opts.source?.name?
-      opts.source = opts.source.name
-    # Then try src.name if it exists
-    else if src.name?
-      opts.source = src.name
-    # Or else, delete it..
+    if opts.sources?
+      this.name = opts.options.name
     else
-      delete opts.source
+      this.name = opts.name ||= src.name
+
+    mixin src, this
 
     this
 
@@ -181,8 +188,9 @@ class module.exports.Request.Dynamic extends Source
 # Fallback operator. Name in `create` params..
 
 class module.exports.Fallback extends Source
-  @create: (client, opts, fn) =>
-    res     = new this client, opts
+  @path: "/fallback"
+
+  @create: (client, opts, fn) ->
     sources = {}
     for key, source of opts.sources
       sources[key] = ""
@@ -190,16 +198,7 @@ class module.exports.Fallback extends Source
     options      = opts.options || {}
     options.name = opts.name
 
-    res.http_request {
-      method  : "PUT",
-      path    : "/fallback",
-      query   :
-        sources : sources
-        options : options
-      expects : 201 }, (err) ->
-        return fn err, null if err?
-
-        fn null, res
+    super client, { sources: sources, options: options}, fn
 
 # Mapping operators (no name given in `create` function parameters)
 

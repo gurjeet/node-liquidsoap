@@ -17,11 +17,14 @@ module.exports.chain = (object, process, fn) ->
 
   exec()
 
-module.exports.stringify = (object) ->
+module.exports.stringify = stringify = (object) ->
   res = {}
 
   for key, value of object
-    res[key] = "#{value}"
+    if typeof value == "object"
+      res[key] = stringify(value)
+    else
+      res[key] = "#{value}"
 
   res
 
