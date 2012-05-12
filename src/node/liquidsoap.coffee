@@ -210,6 +210,19 @@ class module.exports.Request.Queue extends Source
       path   : "/sources/#{@name}/requests",
       query  : requests }, fn
 
+class module.exports.Request.Dynamic extends Source
+  @create: (client, opts, fn) =>
+    res = Source.create this, client, opts
+
+    res.http_request {
+      method  : "PUT",
+      path    : "/request/dynamic",
+      query   : stringify(opts),
+      expects : 201}, (err) ->
+        return fn err, null if err?
+
+        fn null, res
+
 # Fallback operator. Name in `create` params..
 
 class module.exports.Fallback extends Source

@@ -837,9 +837,11 @@ EventEmitter.prototype.listeners = function(type) {
 
 require.define("/request.coffee", function (require, module, exports, __dirname, __filename) {
 (function() {
-  var Blank, Client, Fallback, Input, Metadata, Output, Request, Single, changeMetadata, checkState, client, opts, pushRequest, sources, _ref;
+  var Blank, Client, Fallback, Input, Metadata, Output, Request, Single, chain, changeMetadata, checkState, client, opts, pushRequest, sources, _ref;
 
   _ref = require("./liquidsoap"), Client = _ref.Client, Request = _ref.Request, Output = _ref.Output, Input = _ref.Input, Metadata = _ref.Metadata, Fallback = _ref.Fallback, Single = _ref.Single, Blank = _ref.Blank;
+
+  chain = require("./utils").chain;
 
   opts = {
     auth: "test:test",
@@ -876,13 +878,25 @@ require.define("/request.coffee", function (require, module, exports, __dirname,
         }
       }
     },
-    bar: {
-      type: Blank,
-      duration: 3
-    },
-    bla: {
-      type: Single,
-      uri: "say:it works!"
+    dummy: {
+      type: Output.Dummy,
+      source: {
+        type: Fallback,
+        sources: {
+          bar: {
+            type: Blank,
+            duration: 3
+          },
+          bla: {
+            type: Single,
+            uri: "say:it works!"
+          },
+          gni: {
+            type: Request.Dynamic,
+            uri: "lastfm://globaltags/rocksteady"
+          }
+        }
+      }
     }
   };
 
@@ -942,22 +956,23 @@ require.define("/request.coffee", function (require, module, exports, __dirname,
   };
 
   client.create(sources, function(err, sources) {
-    var dummy;
+    var dummy2;
     if (err != null) {
       console.log("Error while creating sources:");
       return console.dir(err);
     }
-    dummy = {
-      dummy: {
+    dummy2 = {
+      dummy2: {
         type: Output.Dummy,
         source: sources.bar
       }
     };
-    client.create(dummy, function(err) {
+    client.create(dummy2, function(err, dummy2) {
       if (err != null) {
         console.log("Error while creating dummy source.");
         return console.dir(err);
       }
+      return sources.dummy2 = dummy2.dummy2;
     });
     if (err != null) {
       console.log("Error while creating sources:");
@@ -971,28 +986,40 @@ require.define("/request.coffee", function (require, module, exports, __dirname,
               console.log("Error while skipping on request1:");
               return console.dir(err);
             }
-            return sources.bar.shutdown(function(err) {
+            return checkState(sources.radiopi, function(err) {
+              var cb;
               if (err != null) {
-                console.log("Error while shutting bar (dummy) source down:");
-                return console.dir(err);
+                console.log("Error while checking radiopi's status:");
+                console.dir(err);
               }
-              return checkState(sources.radiopi, function(err) {
-                var cb;
-                if (err != null) {
-                  console.log("Error while checking radiopi's status:");
-                  console.dir(err);
-                }
-                cb = function() {
-                  return sources.fallback.skip(function(err) {
+              cb = function() {
+                return sources.fallback.skip(function(err) {
+                  var process;
+                  if (err != null) {
+                    console.log("Error while skipping on fallback:");
+                    return console.dir(err);
+                  }
+                  process = function(source, name, fn) {
+                    return source.shutdown(function(err) {
+                      if (err) {
+                        return fn({
+                          name: name,
+                          err: err
+                        });
+                      }
+                      return fn();
+                    });
+                  };
+                  return chain(sources, process, function(err) {
                     if (err != null) {
-                      console.log("Error while skipping on fallback:");
-                      return console.dir(err);
+                      console.log("Error while shuting down " + err.name + ":");
+                      return console.dir(err.err);
                     }
                     return console.log("All Good Folks!");
                   });
-                };
-                return setTimeout(cb, 1000);
-              });
+                });
+              };
+              return setTimeout(cb, 1000);
             });
           });
         });
@@ -1278,6 +1305,33 @@ require.define("/liquidsoap.coffee", function (require, module, exports, __dirna
     };
 
     return Queue;
+
+  }).call(this);
+
+  module.exports.Request.Dynamic = (function() {
+    var _this = this;
+
+    __extends(Dynamic, Source);
+
+    function Dynamic() {
+      Dynamic.__super__.constructor.apply(this, arguments);
+    }
+
+    Dynamic.create = function(client, opts, fn) {
+      var res;
+      res = Source.create(Dynamic, client, opts);
+      return res.http_request({
+        method: "PUT",
+        path: "/request/dynamic",
+        query: stringify(opts),
+        expects: 201
+      }, function(err) {
+        if (err != null) return fn(err, null);
+        return fn(null, res);
+      });
+    };
+
+    return Dynamic;
 
   }).call(this);
 

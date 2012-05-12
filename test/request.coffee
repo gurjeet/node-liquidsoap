@@ -41,6 +41,9 @@ sources =
         bla :
           type : Single
           uri  : "say:it works!"
+        gni :
+          type : Request.Dynamic
+          uri  : "lastfm://globaltags/rocksteady"
 
 pushRequest = (source, request, fn) ->
  source.push request, (err) ->
