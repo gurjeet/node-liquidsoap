@@ -1045,6 +1045,7 @@ require.define("/liquidsoap.coffee", function (require, module, exports, __dirna
       this.http_request = __bind(this.http_request, this);
       this.auth = opts.auth;
       this.host = opts.host;
+      this.scheme = opts.scheme || "http";
       if (opts.scheme === "https") {
         this.http = require("https");
       } else {
@@ -1068,7 +1069,8 @@ require.define("/liquidsoap.coffee", function (require, module, exports, __dirna
         port: this.port,
         method: opts.method,
         path: opts.path,
-        headers: headers
+        headers: headers,
+        scheme: this.scheme
       };
       if (query != null) {
         query = JSON.stringify(query);
@@ -1149,13 +1151,24 @@ require.define("/liquidsoap.coffee", function (require, module, exports, __dirna
 
   Source = (function() {
 
-    function Source() {}
+    Source.create = function(client, opts, fn) {
+      var res;
+      res = new this(client, opts);
+      return res.http_request({
+        method: "PUT",
+        path: this.path,
+        query: stringify(opts),
+        expects: 201
+      }, function(err) {
+        if (err != null) return fn(err, null);
+        return fn(null, res);
+      });
+    };
 
-    Source.create = function(dst, src, opts) {
-      var res, _ref2;
-      res = new dst;
-      res.name = opts.name || (opts.name = src.name);
-      mixin(src, res);
+    function Source(src, opts) {
+      var _ref2;
+      this.name = opts.name || (opts.name = src.name);
+      mixin(src, this);
       delete opts.type;
       if (((_ref2 = opts.source) != null ? _ref2.name : void 0) != null) {
         opts.source = opts.source.name;
@@ -1164,8 +1177,8 @@ require.define("/liquidsoap.coffee", function (require, module, exports, __dirna
       } else {
         delete opts.source;
       }
-      return res;
-    };
+      this;
+    }
 
     Source.prototype.skip = function(fn) {
       return this.http_request({
@@ -1186,7 +1199,6 @@ require.define("/liquidsoap.coffee", function (require, module, exports, __dirna
   })();
 
   module.exports.Blank = (function() {
-    var _this = this;
 
     __extends(Blank, Source);
 
@@ -1194,26 +1206,13 @@ require.define("/liquidsoap.coffee", function (require, module, exports, __dirna
       Blank.__super__.constructor.apply(this, arguments);
     }
 
-    Blank.create = function(client, opts, fn) {
-      var res;
-      res = Source.create(Blank, client, opts);
-      return res.http_request({
-        method: "PUT",
-        path: "/blank",
-        query: stringify(opts),
-        expects: 201
-      }, function(err) {
-        if (err != null) return fn(err, null);
-        return fn(null, res);
-      });
-    };
+    Blank.path = "/blank";
 
     return Blank;
 
-  }).call(this);
+  })();
 
   module.exports.Single = (function() {
-    var _this = this;
 
     __extends(Single, Source);
 
@@ -1221,58 +1220,15 @@ require.define("/liquidsoap.coffee", function (require, module, exports, __dirna
       Single.__super__.constructor.apply(this, arguments);
     }
 
-    Single.create = function(client, opts, fn) {
-      var res;
-      res = Source.create(Single, client, opts);
-      return res.http_request({
-        method: "PUT",
-        path: "/single",
-        query: stringify(opts),
-        expects: 201
-      }, function(err) {
-        if (err != null) return fn(err, null);
-        return fn(null, res);
-      });
-    };
+    Single.path = "/single";
 
     return Single;
 
-  }).call(this);
-
-  module.exports.Input = {};
-
-  module.exports.Input.Http = (function() {
-    var _this = this;
-
-    __extends(Http, Source);
-
-    function Http() {
-      Http.__super__.constructor.apply(this, arguments);
-    }
-
-    Http.create = function(client, opts, fn) {
-      var res;
-      res = Source.create(Http, client, opts);
-      mixin(Stateful, res);
-      return res.http_request({
-        method: "PUT",
-        path: "/input/http",
-        query: stringify(opts),
-        expects: 201
-      }, function(err) {
-        if (err != null) return fn(err, null);
-        return fn(null, res);
-      });
-    };
-
-    return Http;
-
-  }).call(this);
+  })();
 
   module.exports.Request = {};
 
   module.exports.Request.Queue = (function() {
-    var _this = this;
 
     __extends(Queue, Source);
 
@@ -1281,19 +1237,7 @@ require.define("/liquidsoap.coffee", function (require, module, exports, __dirna
       Queue.__super__.constructor.apply(this, arguments);
     }
 
-    Queue.create = function(client, opts, fn) {
-      var res;
-      res = Source.create(Queue, client, opts);
-      return res.http_request({
-        method: "PUT",
-        path: "/request/queue",
-        query: stringify(opts),
-        expects: 201
-      }, function(err) {
-        if (err != null) return fn(err, null);
-        return fn(null, res);
-      });
-    };
+    Queue.path = "/request/queue";
 
     Queue.prototype.push = function(requests, fn) {
       if (!(requests instanceof Array)) requests = [requests];
@@ -1306,10 +1250,9 @@ require.define("/liquidsoap.coffee", function (require, module, exports, __dirna
 
     return Queue;
 
-  }).call(this);
+  })();
 
   module.exports.Request.Dynamic = (function() {
-    var _this = this;
 
     __extends(Dynamic, Source);
 
@@ -1317,23 +1260,11 @@ require.define("/liquidsoap.coffee", function (require, module, exports, __dirna
       Dynamic.__super__.constructor.apply(this, arguments);
     }
 
-    Dynamic.create = function(client, opts, fn) {
-      var res;
-      res = Source.create(Dynamic, client, opts);
-      return res.http_request({
-        method: "PUT",
-        path: "/request/dynamic",
-        query: stringify(opts),
-        expects: 201
-      }, function(err) {
-        if (err != null) return fn(err, null);
-        return fn(null, res);
-      });
-    };
+    Dynamic.path = "/request/dynamic";
 
     return Dynamic;
 
-  }).call(this);
+  })();
 
   module.exports.Fallback = (function() {
     var _this = this;
@@ -1346,7 +1277,7 @@ require.define("/liquidsoap.coffee", function (require, module, exports, __dirna
 
     Fallback.create = function(client, opts, fn) {
       var key, options, res, source, sources, _ref2;
-      res = Source.create(Fallback, client, opts);
+      res = new Fallback(client, opts);
       sources = {};
       _ref2 = opts.sources;
       for (key in _ref2) {
@@ -1376,7 +1307,6 @@ require.define("/liquidsoap.coffee", function (require, module, exports, __dirna
   module.exports.Metadata = {};
 
   module.exports.Metadata.Get = (function() {
-    var _this = this;
 
     __extends(Get, Source);
 
@@ -1385,19 +1315,7 @@ require.define("/liquidsoap.coffee", function (require, module, exports, __dirna
       Get.__super__.constructor.apply(this, arguments);
     }
 
-    Get.create = function(source, opts, fn) {
-      var res;
-      res = Source.create(Get, source, opts);
-      return res.http_request({
-        method: "PUT",
-        path: "/get_metadata",
-        query: stringify(opts),
-        expects: 201
-      }, function(err) {
-        if (err != null) return fn(err, null);
-        return fn(null, res);
-      });
-    };
+    Get.path = "/get_metadata";
 
     Get.prototype.get_metadata = function(fn) {
       return this.http_request({
@@ -1408,10 +1326,9 @@ require.define("/liquidsoap.coffee", function (require, module, exports, __dirna
 
     return Get;
 
-  }).call(this);
+  })();
 
   module.exports.Metadata.Set = (function() {
-    var _this = this;
 
     __extends(Set, Source);
 
@@ -1420,19 +1337,7 @@ require.define("/liquidsoap.coffee", function (require, module, exports, __dirna
       Set.__super__.constructor.apply(this, arguments);
     }
 
-    Set.create = function(source, opts, fn) {
-      var res;
-      res = Source.create(Set, source, opts);
-      return res.http_request({
-        method: "PUT",
-        path: "/set_metadata",
-        query: stringify(opts),
-        expects: 201
-      }, function(err) {
-        if (err != null) return fn(err, null);
-        return fn(null, res);
-      });
-    };
+    Set.path = "/set_metadata";
 
     Set.prototype.set_metadata = function(metadata, fn) {
       return this.http_request({
@@ -1444,27 +1349,31 @@ require.define("/liquidsoap.coffee", function (require, module, exports, __dirna
 
     return Set;
 
-  }).call(this);
+  })();
 
   Stateful = (function() {
 
-    function Stateful() {}
+    __extends(Stateful, Source);
 
-    Stateful.start = function(fn) {
+    function Stateful() {
+      Stateful.__super__.constructor.apply(this, arguments);
+    }
+
+    Stateful.prototype.start = function(fn) {
       return this.http_request({
         method: "POST",
         path: "/sources/" + this.name + "/start"
       }, fn);
     };
 
-    Stateful.stop = function(fn) {
+    Stateful.prototype.stop = function(fn) {
       return this.http_request({
         method: "POST",
         path: "/sources/" + this.name + "/stop"
       }, fn);
     };
 
-    Stateful.status = function(fn) {
+    Stateful.prototype.status = function(fn) {
       return this.http_request({
         method: "GET",
         path: "/sources/" + this.name + "/status"
@@ -1475,63 +1384,51 @@ require.define("/liquidsoap.coffee", function (require, module, exports, __dirna
 
   })();
 
+  module.exports.Input = {};
+
+  module.exports.Input.Http = (function() {
+
+    __extends(Http, Stateful);
+
+    function Http() {
+      Http.__super__.constructor.apply(this, arguments);
+    }
+
+    Http.path = "/input/http";
+
+    return Http;
+
+  })();
+
   module.exports.Output = {};
 
   module.exports.Output.Ao = (function() {
-    var _this = this;
 
-    __extends(Ao, Source);
+    __extends(Ao, Stateful);
 
     function Ao() {
       Ao.__super__.constructor.apply(this, arguments);
     }
 
-    Ao.create = function(source, opts, fn) {
-      var res;
-      res = Source.create(Ao, source, opts);
-      mixin(Stateful, res);
-      return res.http_request({
-        method: "PUT",
-        path: "/output/ao",
-        query: stringify(opts),
-        expects: 201
-      }, function(err) {
-        if (err != null) return fn(err, null);
-        return fn(null, res);
-      });
-    };
+    Ao.path = "/output/ao";
 
     return Ao;
 
-  }).call(this);
+  })();
 
   module.exports.Output.Dummy = (function() {
-    var _this = this;
 
-    __extends(Dummy, Source);
+    __extends(Dummy, Stateful);
 
     function Dummy() {
       Dummy.__super__.constructor.apply(this, arguments);
     }
 
-    Dummy.create = function(source, opts, fn) {
-      var res;
-      res = Source.create(Dummy, source, opts);
-      mixin(Stateful, res);
-      return res.http_request({
-        method: "PUT",
-        path: "/output/dummy",
-        query: stringify(opts),
-        expects: 201
-      }, function(err) {
-        if (err != null) return fn(err, null);
-        return fn(null, res);
-      });
-    };
+    Dummy.path = "/output/dummy";
 
     return Dummy;
 
-  }).call(this);
+  })();
 
 }).call(this);
 

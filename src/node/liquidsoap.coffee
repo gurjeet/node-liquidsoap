@@ -5,6 +5,7 @@ class module.exports.Client
     @auth = opts.auth
     @host = opts.host
     # For browserify..
+    @scheme = opts.scheme || "http"
     if opts.scheme == "https"
       @http = require "https"
     else
@@ -27,6 +28,7 @@ class module.exports.Client
       method  : opts.method
       path    : opts.path
       headers : headers
+      scheme  : @scheme
 
     if query?
       query = JSON.stringify query
@@ -109,12 +111,22 @@ class module.exports.Client
       fn null, res
 
 class Source
-  @create: (dst, src, opts) ->
-    res = new dst
+  @create: (client, opts, fn) ->
+    res = new this client, opts
 
-    res.name = opts.name ||= src.name
-    mixin src, res
- 
+    res.http_request {
+      method  : "PUT",
+      path    : @path,
+      query   : stringify(opts),
+      expects : 201 }, (err) ->
+        return fn err, null if err?
+
+        fn null, res
+
+  constructor: (src, opts) ->
+    this.name = opts.name ||= src.name
+    mixin src, this
+
     # Cleanup options
     delete opts.type
 
@@ -129,7 +141,7 @@ class Source
     else
       delete opts.source
 
-    res
+    this
 
   # Generic endpoints
   skip: (fn) ->
@@ -145,62 +157,15 @@ class Source
 # Creation operators, name in `create` params.
 
 class module.exports.Blank extends Source
-  @create: (client, opts, fn) =>
-    res = Source.create this, client, opts
-
-    res.http_request {
-      method  : "PUT",
-      path    : "/blank",
-      query   : stringify(opts),
-      expects : 201 }, (err) ->
-        return fn err, null if err?
-
-        fn null, res
+  @path: "/blank"
 
 class module.exports.Single extends Source
-  @create: (client, opts, fn) =>
-    res = Source.create this, client, opts
-
-    res.http_request {
-      method  : "PUT",
-      path    : "/single",
-      query   : stringify(opts),
-      expects : 201 }, (err) ->
-        return fn err, null if err?
-
-        fn null, res
-
-module.exports.Input = {}
-
-class module.exports.Input.Http extends Source
-  @create: (client, opts, fn) =>
-    res = Source.create this, client, opts
-     
-    mixin Stateful, res
-
-    res.http_request {
-      method  : "PUT",
-      path    : "/input/http",
-      query   : stringify(opts),
-      expects : 201 }, (err) ->
-        return fn err, null if err?
-
-        fn null, res
+  @path: "/single"
 
 module.exports.Request = {}
 
 class module.exports.Request.Queue extends Source
-  @create: (client, opts, fn) =>
-    res = Source.create this, client, opts
-
-    res.http_request {
-      method  : "PUT",
-      path    : "/request/queue",
-      query   : stringify(opts),
-      expects : 201}, (err) ->
-        return fn err, null if err?
-
-        fn null, res
+  @path: "/request/queue"
 
   push: (requests, fn) =>
     requests = [requests] unless requests instanceof Array
@@ -211,23 +176,13 @@ class module.exports.Request.Queue extends Source
       query  : requests }, fn
 
 class module.exports.Request.Dynamic extends Source
-  @create: (client, opts, fn) =>
-    res = Source.create this, client, opts
-
-    res.http_request {
-      method  : "PUT",
-      path    : "/request/dynamic",
-      query   : stringify(opts),
-      expects : 201}, (err) ->
-        return fn err, null if err?
-
-        fn null, res
+  @path: "/request/dynamic"
 
 # Fallback operator. Name in `create` params..
 
 class module.exports.Fallback extends Source
   @create: (client, opts, fn) =>
-    res     = Source.create this, client, opts
+    res     = new this client, opts
     sources = {}
     for key, source of opts.sources
       sources[key] = ""
@@ -251,17 +206,7 @@ class module.exports.Fallback extends Source
 module.exports.Metadata = {}
 
 class module.exports.Metadata.Get extends Source
-  @create: (source, opts, fn) =>
-    res = Source.create this, source, opts
-
-    res.http_request {
-      method  : "PUT",
-      path    : "/get_metadata",
-      query   : stringify(opts),
-      expects : 201 }, (err) ->
-        return fn err, null if err?
-
-        fn null, res
+  @path: "/get_metadata"
 
   get_metadata: (fn) =>
     @http_request {
@@ -269,17 +214,7 @@ class module.exports.Metadata.Get extends Source
       path   : "/sources/#{@name}/metadata" }, fn
 
 class module.exports.Metadata.Set extends Source
-  @create: (source, opts, fn) =>
-    res = Source.create this, source, opts
-
-    res.http_request {
-      method  : "PUT",
-      path    : "/set_metadata",
-      query   : stringify(opts),
-      expects : 201 }, (err) ->
-        return fn err, null if err?
-
-        fn null, res
+  @path: "/set_metadata"
 
   set_metadata: (metadata, fn) =>
     @http_request {
@@ -287,53 +222,31 @@ class module.exports.Metadata.Set extends Source
       path   : "/sources/#{@name}/metadata",
       query  : metadata }, fn
 
-class Stateful
-  @start: (fn) ->
+class Stateful extends Source
+  start: (fn) ->
     @http_request {
       method : "POST",
       path   : "/sources/#{@name}/start" }, fn
 
-  @stop: (fn) ->
+  stop: (fn) ->
     @http_request {
       method : "POST",
       path   : "/sources/#{@name}/stop" }, fn
 
-  @status: (fn) ->
+  status: (fn) ->
     @http_request {
       method : "GET",
       path   : "/sources/#{@name}/status" }, fn
 
-# Outputs (no name in `create` but may need to be reviewed
-# in the future..)
+module.exports.Input = {}
+
+class module.exports.Input.Http extends Stateful
+  @path: "/input/http"
 
 module.exports.Output = {}
 
-class module.exports.Output.Ao extends Source
-  @create: (source, opts, fn) =>
-    res = Source.create this, source, opts
+class module.exports.Output.Ao extends Stateful
+  @path: "/output/ao"
 
-    mixin Stateful, res
-
-    res.http_request {
-      method  : "PUT",
-      path    : "/output/ao",
-      query   : stringify(opts),
-      expects : 201 }, (err) ->
-        return fn err, null if err?
-
-        fn null, res
-
-class module.exports.Output.Dummy extends Source
-  @create: (source, opts, fn) =>
-    res = Source.create this, source, opts
-
-    mixin Stateful, res
-
-    res.http_request {
-      method  : "PUT",
-      path    : "/output/dummy",
-      query   : stringify(opts),
-      expects : 201 }, (err) ->
-        return fn err, null if err?
-
-        fn null, res
+class module.exports.Output.Dummy extends Stateful
+  @path: "/output/dummy"
