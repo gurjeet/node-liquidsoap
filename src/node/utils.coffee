@@ -34,4 +34,4 @@ module.exports.mixin = (src, dst) ->
 
 # For the browser..
 module.exports.b64 = (str) ->
-  fromByteArray Array.prototype.map.call(str, (char) -> char.charCodeAt(0))
+  fromByteArray Array.prototype.map.call(str, (ch) -> ch.charCodeAt(0))
