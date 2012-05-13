@@ -15,6 +15,7 @@ class module.exports.Client
   http_request: (opts, fn) =>
     expects = opts.expects || 200
     query   = opts.query
+    options = opts.options || {}
 
     headers =
       "Accept" : "application/json"
@@ -132,7 +133,7 @@ class Source
         delete opts.source
 
     res.http_request {
-      method  : "PUT",
+      method  : "POST",
       path    : @path,
       query   : stringify(opts),
       expects : 201 }, (err) ->
@@ -153,7 +154,7 @@ class Source
   # Generic endpoints
   skip: (fn) ->
     @http_request {
-      method : "POST",
+      method : "PUT",
       path   : "/sources/#{@name}/skip"}, fn
 
   shutdown: (fn) ->
@@ -178,7 +179,7 @@ class module.exports.Request.Queue extends Source
     requests = [requests] unless requests instanceof Array
 
     @http_request {
-      method : "POST",
+      method : "PUT",
       path   : "/sources/#{@name}/requests",
       query  : requests }, fn
 
@@ -217,19 +218,19 @@ class module.exports.Metadata.Set extends Source
 
   set_metadata: (metadata, fn) =>
     @http_request {
-      method : "POST",
+      method : "PUT",
       path   : "/sources/#{@name}/metadata",
       query  : metadata }, fn
 
 class Stateful extends Source
   start: (fn) ->
     @http_request {
-      method : "POST",
+      method : "PUT",
       path   : "/sources/#{@name}/start" }, fn
 
   stop: (fn) ->
     @http_request {
-      method : "POST",
+      method : "PUT",
       path   : "/sources/#{@name}/stop" }, fn
 
   status: (fn) ->

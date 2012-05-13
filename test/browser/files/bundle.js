@@ -1055,9 +1055,10 @@ require.define("/liquidsoap.coffee", function (require, module, exports, __dirna
     }
 
     Client.prototype.http_request = function(opts, fn) {
-      var expects, headers, query, req;
+      var expects, headers, options, query, req;
       expects = opts.expects || 200;
       query = opts.query;
+      options = opts.options || {};
       headers = {
         "Accept": "application/json"
       };
@@ -1165,7 +1166,7 @@ require.define("/liquidsoap.coffee", function (require, module, exports, __dirna
         }
       }
       return res.http_request({
-        method: "PUT",
+        method: "POST",
         path: this.path,
         query: stringify(opts),
         expects: 201
@@ -1187,7 +1188,7 @@ require.define("/liquidsoap.coffee", function (require, module, exports, __dirna
 
     Source.prototype.skip = function(fn) {
       return this.http_request({
-        method: "POST",
+        method: "PUT",
         path: "/sources/" + this.name + "/skip"
       }, fn);
     };
@@ -1247,7 +1248,7 @@ require.define("/liquidsoap.coffee", function (require, module, exports, __dirna
     Queue.prototype.push = function(requests, fn) {
       if (!(requests instanceof Array)) requests = [requests];
       return this.http_request({
-        method: "POST",
+        method: "PUT",
         path: "/sources/" + this.name + "/requests",
         query: requests
       }, fn);
@@ -1338,7 +1339,7 @@ require.define("/liquidsoap.coffee", function (require, module, exports, __dirna
 
     Set.prototype.set_metadata = function(metadata, fn) {
       return this.http_request({
-        method: "POST",
+        method: "PUT",
         path: "/sources/" + this.name + "/metadata",
         query: metadata
       }, fn);
@@ -1358,14 +1359,14 @@ require.define("/liquidsoap.coffee", function (require, module, exports, __dirna
 
     Stateful.prototype.start = function(fn) {
       return this.http_request({
-        method: "POST",
+        method: "PUT",
         path: "/sources/" + this.name + "/start"
       }, fn);
     };
 
     Stateful.prototype.stop = function(fn) {
       return this.http_request({
-        method: "POST",
+        method: "PUT",
         path: "/sources/" + this.name + "/stop"
       }, fn);
     };
