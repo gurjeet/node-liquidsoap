@@ -974,6 +974,14 @@ require.define("/request.coffee", function (require, module, exports, __dirname,
       }
       return sources.dummy2 = dummy2.dummy2;
     });
+    client.sources(function(err, sources) {
+      if (err != null) {
+        console.log("Error while grabbing list of defined sources.");
+        return console.dir(err);
+      }
+      console.log("All sources:");
+      return console.dir(sources);
+    });
     if (err != null) {
       console.log("Error while creating sources:");
       return console.dir(err);
@@ -1146,6 +1154,13 @@ require.define("/liquidsoap.coffee", function (require, module, exports, __dirna
       });
     };
 
+    Client.prototype.sources = function(fn) {
+      return this.http_request({
+        method: "GET",
+        path: "/sources"
+      }, fn);
+    };
+
     return Client;
 
   })();
@@ -1183,6 +1198,7 @@ require.define("/liquidsoap.coffee", function (require, module, exports, __dirna
         this.name = opts.name || (opts.name = src.name);
       }
       mixin(src, this);
+      delete this.sources;
       this;
     }
 

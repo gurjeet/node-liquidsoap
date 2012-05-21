@@ -113,6 +113,14 @@ client.create sources, (err, sources) ->
 
     sources.dummy2 = dummy2.dummy2
 
+  client.sources (err, sources) ->
+    if err?
+      console.log "Error while grabbing list of defined sources."
+      return console.dir err
+
+    console.log "All sources:"
+    console.dir sources
+
   if err?
     console.log "Error while creating sources:"
     return console.dir err

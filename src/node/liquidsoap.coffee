@@ -111,6 +111,11 @@ class module.exports.Client
 
       fn null, res
 
+  sources: (fn) ->
+    @http_request {
+      method : "GET"
+      path   : "/sources" }, fn
+
 class Source
   @create: (client, opts, fn) ->
     res = new this client, opts
@@ -148,6 +153,9 @@ class Source
       this.name = opts.name ||= src.name
 
     mixin src, this
+
+    # Do no heritate sources method.
+    delete this.sources
 
     this
 
